@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<body>
+<input id="name" placeholder="Nickname">
+<button onclick="start()">Start</button>
+<canvas id="c" width="800" height="500"></canvas>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const ctx = c.getContext("2d");
+let me = { x:100, y:100, name:"" };
+let others = {};
+
+function start(){
+  me.name = name.value || "Player";
+}
+
+document.onkeydown = e => {
+  if(e.key=="a") me.x -= 5;
+  if(e.key=="d") me.x += 5;
+  if(e.key=="w") me.y -= 5;
+  if(e.key=="s") me.y += 5;
+  socket.emit("update", me);
+};
+
+socket.on("players", data => {
+  others = data;
+});
+
+function loop(){
+  ctx.clearRect(0,0,800,500);
+  for(let id in others){
+    let p = others[id];
+    ctx.fillRect(p.x,p.y,30,40);
+    ctx.fillText(p.name,p.x,p.y-5);
+  }
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
