@@ -1,39 +1,58 @@
 <!DOCTYPE html>
 <html>
+<head>
+  <title>Mini Roblox</title>
+  <style>
+    body { margin:0; font-family:Arial; background:#222; color:white; }
+    #menu { position:fixed; inset:0; display:flex; flex-direction:column;
+            justify-content:center; align-items:center; background:#111; }
+    button { padding:15px 30px; font-size:20px; cursor:pointer; }
+    canvas { display:none; background:#333; margin:auto; }
+  </style>
+</head>
 <body>
-<input id="name" placeholder="Nickname">
-<button onclick="start()">Start</button>
-<canvas id="c" width="800" height="500"></canvas>
+
+<div id="menu">
+  <h1>Mini Roblox</h1>
+  <input id="name" placeholder="İsmin" />
+  <button onclick="start()">PLAY</button>
+</div>
+
+<canvas id="c" width="500" height="500"></canvas>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-const ctx = c.getContext("2d");
-let me = { x:100, y:100, name:"" };
-let others = {};
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+let me = { x:100, y:100, name:"", color:"red" };
+let players = {};
 
 function start(){
-  me.name = name.value || "Player";
+  me.name = document.getElementById("name").value || "Player";
+  document.getElementById("menu").style.display="none";
+  canvas.style.display="block";
 }
 
 document.onkeydown = e => {
-  if(e.key=="a") me.x -= 5;
-  if(e.key=="d") me.x += 5;
-  if(e.key=="w") me.y -= 5;
-  if(e.key=="s") me.y += 5;
+  if(e.key=="w") me.y-=5;
+  if(e.key=="s") me.y+=5;
+  if(e.key=="a") me.x-=5;
+  if(e.key=="d") me.x+=5;
   socket.emit("update", me);
 };
 
-socket.on("players", data => {
-  others = data;
-});
+socket.on("players", p => players = p);
 
 function loop(){
-  ctx.clearRect(0,0,800,500);
-  for(let id in others){
-    let p = others[id];
-    ctx.fillRect(p.x,p.y,30,40);
-    ctx.fillText(p.name,p.x,p.y-5);
+  ctx.clearRect(0,0,500,500);
+  for(let id in players){
+    let p = players[id];
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x,p.y,20,20);
+    ctx.fillStyle="white";
+    ctx.fillText(p.name, p.x, p.y-5);
   }
   requestAnimationFrame(loop);
 }
