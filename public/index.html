@@ -5,9 +5,10 @@
   <style>
     body { margin:0; font-family:Arial; background:#222; color:white; }
     #menu { position:fixed; inset:0; display:flex; flex-direction:column;
-            justify-content:center; align-items:center; background:#111; }
-    button { padding:15px 30px; font-size:20px; cursor:pointer; }
-    canvas { display:none; background:#333; margin:auto; }
+            justify-content:center; align-items:center; background:#111; gap:10px; }
+    canvas { display:none; background:#333; margin:auto; border:2px solid #555; }
+    #chat { position:fixed; bottom:0; left:0; width:100%; background:#111; display:none; }
+    #messages { max-height:120px; overflow:auto; font-size:14px; }
   </style>
 </head>
 <body>
@@ -15,44 +16,78 @@
 <div id="menu">
   <h1>Mini Roblox</h1>
   <input id="name" placeholder="İsmin" />
+  <input id="color" type="color" />
   <button onclick="start()">PLAY</button>
 </div>
 
 <canvas id="c" width="500" height="500"></canvas>
 
+<div id="chat">
+  <div id="messages"></div>
+  <input id="msg" placeholder="Mesaj yaz..." onkeydown="if(event.key=='Enter')send()" />
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
 
-let me = { x:100, y:100, name:"", color:"red" };
+let me = { x:50, y:50, name:"", color:"#ff0000" };
 let players = {};
+const walls = [
+  {x:150,y:150,w:200,h:20},
+  {x:100,y:300,w:20,h:150}
+];
 
 function start(){
-  me.name = document.getElementById("name").value || "Player";
-  document.getElementById("menu").style.display="none";
-  canvas.style.display="block";
+  me.name = name.value || "Player";
+  me.color = color.value;
+  menu.style.display="none";
+  c.style.display="block";
+  chat.style.display="block";
+}
+
+function collide(nx, ny){
+  for(let w of walls){
+    if(nx < w.x+w.w && nx+20 > w.x && ny < w.y+w.h && ny+20 > w.y)
+      return true;
+  }
+  return false;
 }
 
 document.onkeydown = e => {
-  if(e.key=="w") me.y-=5;
-  if(e.key=="s") me.y+=5;
-  if(e.key=="a") me.x-=5;
-  if(e.key=="d") me.x+=5;
+  let nx=me.x, ny=me.y;
+  if(e.key=="w") ny-=5;
+  if(e.key=="s") ny+=5;
+  if(e.key=="a") nx-=5;
+  if(e.key=="d") nx+=5;
+  if(!collide(nx,ny)){ me.x=nx; me.y=ny; }
   socket.emit("update", me);
 };
 
-socket.on("players", p => players = p);
+socket.on("players", p => players=p);
+socket.on("chat", d=>{
+  messages.innerHTML += `<div><b>${d.name}:</b> ${d.msg}</div>`;
+});
+
+function send(){
+  socket.emit("chat", {name:me.name, msg:msg.value});
+  msg.value="";
+}
 
 function loop(){
   ctx.clearRect(0,0,500,500);
+
+  ctx.fillStyle="#777";
+  for(let w of walls) ctx.fillRect(w.x,w.y,w.w,w.h);
+
   for(let id in players){
-    let p = players[id];
-    ctx.fillStyle = p.color;
+    let p=players[id];
+    ctx.fillStyle=p.color;
     ctx.fillRect(p.x,p.y,20,20);
     ctx.fillStyle="white";
-    ctx.fillText(p.name, p.x, p.y-5);
+    ctx.fillText(p.name,p.x,p.y-5);
   }
   requestAnimationFrame(loop);
 }
@@ -60,3 +95,4 @@ loop();
 </script>
 </body>
 </html>
+
