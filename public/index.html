@@ -1,98 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mini Roblox</title>
+  <title>Mini Roblox V2</title>
   <style>
-    body { margin:0; font-family:Arial; background:#222; color:white; }
-    #menu { position:fixed; inset:0; display:flex; flex-direction:column;
-            justify-content:center; align-items:center; background:#111; gap:10px; }
-    canvas { display:none; background:#333; margin:auto; border:2px solid #555; }
-    #chat { position:fixed; bottom:0; left:0; width:100%; background:#111; display:none; }
-    #messages { max-height:120px; overflow:auto; font-size:14px; }
+    body{margin:0;background:#222;color:#fff;font-family:Arial}
+    #menu{position:fixed;inset:0;display:flex;gap:10px;flex-direction:column;align-items:center;justify-content:center;background:#111}
+    canvas{display:none;background:#333}
+    #hud{position:fixed;top:10px;left:10px}
   </style>
 </head>
 <body>
 
 <div id="menu">
   <h1>Mini Roblox</h1>
-  <input id="name" placeholder="İsmin" />
-  <input id="color" type="color" />
+  <input id="name" placeholder="İsmin">
+  <input id="color" type="color">
+  <select id="skin">
+    <option value="square">Kare</option>
+    <option value="circle">Daire</option>
+  </select>
   <button onclick="start()">PLAY</button>
 </div>
 
-<canvas id="c" width="500" height="500"></canvas>
-
-<div id="chat">
-  <div id="messages"></div>
-  <input id="msg" placeholder="Mesaj yaz..." onkeydown="if(event.key=='Enter')send()" />
-</div>
+<div id="hud"></div>
+<canvas id="c" width="800" height="600"></canvas>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const socket = io();
-const c = document.getElementById("c");
-const ctx = c.getContext("2d");
+const socket=io();
+const c=document.getElementById("c"),ctx=c.getContext("2d");
+let cam={x:0,y:0};
+let me={x:100,y:100,name:"",color:"#f00",skin:"square"};
+let players={}, it=null;
 
-let me = { x:50, y:50, name:"", color:"#ff0000" };
-let players = {};
-const walls = [
-  {x:150,y:150,w:200,h:20},
-  {x:100,y:300,w:20,h:150}
-];
+if(localStorage.name) name.value=localStorage.name;
 
 function start(){
-  me.name = name.value || "Player";
-  me.color = color.value;
+  me.name=name.value||"Player";
+  me.color=color.value;
+  me.skin=skin.value;
+  localStorage.name=me.name;
   menu.style.display="none";
   c.style.display="block";
-  chat.style.display="block";
 }
 
-function collide(nx, ny){
-  for(let w of walls){
-    if(nx < w.x+w.w && nx+20 > w.x && ny < w.y+w.h && ny+20 > w.y)
-      return true;
-  }
-  return false;
-}
-
-document.onkeydown = e => {
-  let nx=me.x, ny=me.y;
-  if(e.key=="w") ny-=5;
-  if(e.key=="s") ny+=5;
-  if(e.key=="a") nx-=5;
-  if(e.key=="d") nx+=5;
-  if(!collide(nx,ny)){ me.x=nx; me.y=ny; }
-  socket.emit("update", me);
+document.onkeydown=e=>{
+  let s=6;
+  if(e.key=="w")me.y-=s;
+  if(e.key=="s")me.y+=s;
+  if(e.key=="a")me.x-=s;
+  if(e.key=="d")me.x+=s;
+  socket.emit("update",me);
 };
 
-socket.on("players", p => players=p);
-socket.on("chat", d=>{
-  messages.innerHTML += `<div><b>${d.name}:</b> ${d.msg}</div>`;
+socket.on("state", d=>{
+  players=d.players;
+  it=d.it;
+  hud.innerText = it ? "Ebe: "+players[it]?.name : "";
 });
 
-function send(){
-  socket.emit("chat", {name:me.name, msg:msg.value});
-  msg.value="";
+function drawPlayer(p){
+  ctx.fillStyle=p.color;
+  if(p.skin=="circle"){
+    ctx.beginPath();ctx.arc(p.x-cam.x,p.y-cam.y,12,0,7);ctx.fill();
+  }else{
+    ctx.fillRect(p.x-cam.x,p.y-cam.y,24,24);
+  }
+  ctx.fillText(p.name,p.x-cam.x,p.y-cam.y-5);
 }
 
 function loop(){
-  ctx.clearRect(0,0,500,500);
-
-  ctx.fillStyle="#777";
-  for(let w of walls) ctx.fillRect(w.x,w.y,w.w,w.h);
-
-  for(let id in players){
-    let p=players[id];
-    ctx.fillStyle=p.color;
-    ctx.fillRect(p.x,p.y,20,20);
-    ctx.fillStyle="white";
-    ctx.fillText(p.name,p.x,p.y-5);
-  }
+  cam.x=me.x-400; cam.y=me.y-300;
+  ctx.clearRect(0,0,800,600);
+  for(let id in players) drawPlayer(players[id]);
   requestAnimationFrame(loop);
 }
 loop();
 </script>
 </body>
 </html>
-
