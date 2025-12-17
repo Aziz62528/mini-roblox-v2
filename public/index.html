@@ -1,81 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-  <title>Mini Roblox V2</title>
+  <meta charset="UTF-8">
+  <title>Mini Roblox</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
-    body{margin:0;background:#222;color:#fff;font-family:Arial}
-    #menu{position:fixed;inset:0;display:flex;gap:10px;flex-direction:column;align-items:center;justify-content:center;background:#111}
-    canvas{display:none;background:#333}
-    #hud{position:fixed;top:10px;left:10px}
+    body {
+      margin: 0;
+      background: #222;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    #menu {
+      position: fixed;
+      inset: 0;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    canvas {
+      background: #333;
+      display: none;
+      margin: auto;
+    }
+
+    #mobile {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      gap: 10px;
+    }
+
+    #mobile button {
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+    }
+
+    @media (max-width: 768px) {
+      #mobile {
+        display: grid;
+        grid-template-columns: 60px 60px 60px;
+      }
+    }
   </style>
 </head>
+
 <body>
 
-<div id="menu">
-  <h1>Mini Roblox</h1>
-  <input id="name" placeholder="İsmin">
-  <input id="color" type="color">
-  <select id="skin">
-    <option value="square">Kare</option>
-    <option value="circle">Daire</option>
-  </select>
-  <button onclick="start()">PLAY</button>
-</div>
+  <!-- MENÜ -->
+  <div id="menu">
+    <h1>Mini Roblox</h1>
+    <input id="name" placeholder="İsmin">
+    <button onclick="start()">PLAY</button>
+  </div>
 
-<div id="hud"></div>
-<canvas id="c" width="800" height="600"></canvas>
+  <!-- OYUN -->
+  <canvas id="c" width="500" height="500"></canvas>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket=io();
-const c=document.getElementById("c"),ctx=c.getContext("2d");
-let cam={x:0,y:0};
-let me={x:100,y:100,name:"",color:"#f00",skin:"square"};
-let players={}, it=null;
+  <!-- MOBİL KONTROLLER -->
+  <div id="mobile">
+    <div></div>
+    <button ontouchstart="move(0,-5)">⬆️</button>
+    <div></div>
 
-if(localStorage.name) name.value=localStorage.name;
+    <button ontouchstart="move(-5,0)">⬅️</button>
+    <button ontouchstart="move(0,5)">⬇️</button>
+    <button ontouchstart="move(5,0)">➡️</button>
+  </div>
 
-function start(){
-  me.name=name.value||"Player";
-  me.color=color.value;
-  me.skin=skin.value;
-  localStorage.name=me.name;
-  menu.style.display="none";
-  c.style.display="block";
-}
+  <!-- SOCKET.IO -->
+  <script src="/socket.io/socket.io.js"></script>
 
-document.onkeydown=e=>{
-  let s=6;
-  if(e.key=="w")me.y-=s;
-  if(e.key=="s")me.y+=s;
-  if(e.key=="a")me.x-=s;
-  if(e.key=="d")me.x+=s;
-  socket.emit("update",me);
-};
+  <script>
+    const socket = io(window.location.origin, {
+      transports: ["websocket", "polling"]
+    });
 
-socket.on("state", d=>{
-  players=d.players;
-  it=d.it;
-  hud.innerText = it ? "Ebe: "+players[it]?.name : "";
-});
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
 
-function drawPlayer(p){
-  ctx.fillStyle=p.color;
-  if(p.skin=="circle"){
-    ctx.beginPath();ctx.arc(p.x-cam.x,p.y-cam.y,12,0,7);ctx.fill();
-  }else{
-    ctx.fillRect(p.x-cam.x,p.y-cam.y,24,24);
-  }
-  ctx.fillText(p.name,p.x-cam.x,p.y-cam.y-5);
-}
+    let me = {
+      x: 250,
+      y: 250,
+      name: ""
+    };
 
-function loop(){
-  cam.x=me.x-400; cam.y=me.y-300;
-  ctx.clearRect(0,0,800,600);
-  for(let id in players) drawPlayer(players[id]);
-  requestAnimationFrame(loop);
-}
-loop();
-</script>
+    let players = {};
+
+    function start() {
+      me.name = document.getElementById("name").value || "Player";
+
+      document.getElementById("menu").style.display = "none";
+      canvas.style.display = "block";
+      document.getElementById("mobile").style.display = "grid";
+
+      // 🔥 ilk kez server'a gönder
+      socket.emit("update", me);
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "w") move(0, -5);
+      if (e.key === "s") move(0, 5);
+      if (e.key === "a") move(-5, 0);
+      if (e.key === "d") move(5, 0);
+    });
+
+    function move(dx, dy) {
+      me.x += dx;
+      me.y += dy;
+      socket.emit("update", me);
+    }
+
+    socket.on("players", data => {
+      players = data;
+    });
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let id in players) {
+        const p = players[id];
+
+        ctx.fillStyle = "red";
+        ctx.fillRect(p.x, p.y, 20, 20);
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.fillText(p.name, p.x, p.y - 5);
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+
 </body>
 </html>
