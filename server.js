@@ -4,16 +4,16 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
 
 app.use(express.static("public"));
 
 let players = {};
-let it = null; // ebe
+let it = null;
 
 io.on("connection", socket => {
-  console.log("Oyuncu bağlandı:", socket.id);
-
   players[socket.id] = {
     x: Math.random() * 500,
     y: Math.random() * 500,
@@ -26,10 +26,9 @@ io.on("connection", socket => {
 
   socket.on("update", data => {
     if (!players[socket.id]) return;
-
     players[socket.id] = { ...players[socket.id], ...data };
 
-    // TAG (ebe yakalama)
+    // TAG (ebe)
     if (it && socket.id !== it) {
       const a = players[it];
       const b = players[socket.id];
@@ -44,11 +43,8 @@ io.on("connection", socket => {
   });
 
   socket.on("disconnect", () => {
-    console.log("Oyuncu çıktı:", socket.id);
     delete players[socket.id];
-    if (it === socket.id) {
-      it = Object.keys(players)[0] || null;
-    }
+    if (it === socket.id) it = Object.keys(players)[0] || null;
   });
 });
 
